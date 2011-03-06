@@ -28,18 +28,24 @@ module Rack
       if !STATUS_WITH_NO_ENTITY_BODY.include?(status) &&
          !headers['transfer-encoding'] &&
           headers['content-type'] &&
-          headers['content-type'].include?("text/html")
+          headers['content-type'].include?('text/html')
 
-        content = ""
+        content = ''
         response.each { |part| content += part }
         doc = Nokogiri::HTML(content, nil, 'UTF-8')
+        
+        # Not a true HTML document, so skip any escaping!
+        # TODO do it better way... doc.xpath didn't work
+        # maybe just match the desired element and skip everything if none is found
+        return [status, headers, response] if content.match(/<\s*html.*/i).blank?
+
         nodes = doc.search(@opts[:element])
         nodes.each do |node|
           s = node.inner_html || "[++where is the code?++]"
           if @opts[:markdown]
-            node.parent.swap(send(@highlighter, s))  
+            node.parent.swap(send(@highlighter, s))
           else
-            node.swap(send(@highlighter, s))            
+            node.swap(send(@highlighter, s))
           end
         end
 
